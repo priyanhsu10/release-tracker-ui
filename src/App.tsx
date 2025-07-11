@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Search, Filter, ExternalLink } from "lucide-react";
 import { ComponentData } from "./types";
-import { mockData, mockHistory, mockEims } from "./data/mockData";
+import { DeploymentHistory } from "./types";
+import { getComponents, getComponentHistory, getEims } from "./data/mockData";
 import DeploymentModal from "./components/DeploymentModal";
 import ComponentHistory from "./components/ComponentHistory";
 import { useParams, useNavigate } from "react-router-dom";
@@ -52,11 +53,13 @@ const formatDateTime = (date?: string, time?: string): string => {
   return `${date} at ${time}`;
 };
 
-const Tooltip: React.FC<{ deployment: any; children: React.ReactNode }> = ({
-  deployment,
-  children,
-}) => {
+const Tooltip: React.FC<{
+  deployment: ComponentData["deployments"][string];
+  children: React.ReactNode;
+}> = ({ deployment, children }) => {
   const [isVisible, setIsVisible] = useState(false);
+
+  if (!deployment) return <>{children}</>;
 
   return (
     <div className="relative inline-block">
@@ -120,7 +123,7 @@ function App() {
     useState<ComponentData | null>(null);
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
-    deployment: any;
+    deployment: ComponentData["deployments"][string] | null;
     environment: string;
     componentName: string;
   }>({
@@ -130,16 +133,33 @@ function App() {
     componentName: "",
   });
 
-  // Fetch servers when EIM is selected
+  // New state for async data
+  const [components, setComponents] = useState<ComponentData[]>([]);
+  const [componentHistory, setComponentHistory] = useState<
+    Record<string, DeploymentHistory[]>
+  >({});
+  const [eims, setEims] = useState<{ number: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!eimName) return;
-    // setServersLoading(true); // Removed as per edit hint
-    // setServersError(null); // Removed as per edit hint
-    // getServers() call and related logic removed as server section is not needed
-  }, [eimName]);
+    setLoading(true);
+    setError(null);
+    Promise.all([getComponents(), getComponentHistory(), getEims()])
+      .then(([components, history, eims]) => {
+        setComponents(components);
+        setComponentHistory(history);
+        setEims(eims);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Failed to load data");
+        setLoading(false);
+      });
+  }, []);
 
   // Filter components by EIM (if present) and search term
-  const filteredData = mockData.filter((component) => {
+  const filteredData = components.filter((component: ComponentData) => {
     const matchesEIM = eimName ? component.owner === eimName : true;
     const matchesSearch = component.name
       .toLowerCase()
@@ -148,7 +168,7 @@ function App() {
   });
 
   const handleVersionClick = (
-    deployment: any,
+    deployment: ComponentData["deployments"][string],
     environment: string,
     componentName: string
   ) => {
@@ -177,13 +197,17 @@ function App() {
     });
   };
 
+  // Loading and error UI
+  if (loading) return <div className="p-8 text-center text-lg">Loading...</div>;
+  if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
+
   // Show component history if a component is selected
   if (selectedComponent) {
-    const componentHistory = mockHistory[selectedComponent.id] || [];
+    const history = componentHistory[selectedComponent.id] || [];
     return (
       <ComponentHistory
         component={selectedComponent}
-        history={componentHistory}
+        history={history}
         onBack={handleBackToDashboard}
       />
     );
@@ -210,7 +234,9 @@ function App() {
           </div>
           {eimName &&
             (() => {
-              const eim = mockEims.find((e) => e.name === eimName);
+              const eim = eims.find(
+                (e: (typeof eims)[number]) => e.name === eimName
+              );
               if (!eim) return null;
               return (
                 <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl shadow-sm min-w-[220px] justify-end">
@@ -277,7 +303,7 @@ function App() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredData.map((component, index) => (
+                {filteredData.map((component: ComponentData, index: number) => (
                   <tr
                     key={component.id}
                     className={`hover:bg-gray-50 transition-colors ${
@@ -299,7 +325,7 @@ function App() {
                         </div>
                       </button>
                     </td>
-                    {environments.map((env) => {
+                    {environments.map((env: string) => {
                       const deployment = component.deployments[env];
                       return (
                         <td
@@ -345,12 +371,12 @@ function App() {
 
         {/* Summary Stats */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {environments.map((env) => {
+          {environments.map((env: string) => {
             const deployedCount = filteredData.filter(
-              (component) => component.deployments[env]
+              (component: ComponentData) => component.deployments[env]
             ).length;
             const recentCount = filteredData.filter(
-              (component) =>
+              (component: ComponentData) =>
                 component.deployments[env] &&
                 isRecentDeployment(component.deployments[env]?.deployedAt)
             ).length;

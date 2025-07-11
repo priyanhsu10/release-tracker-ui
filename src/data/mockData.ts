@@ -1,6 +1,7 @@
 import { ComponentData, DeploymentHistory } from "../types";
 
-export const mockData: ComponentData[] = [
+// Deprecated: use getComponents() instead
+const mockData: ComponentData[] = [
   {
     id: "user-service",
     name: "User Service",
@@ -199,7 +200,8 @@ export const mockData: ComponentData[] = [
   },
 ];
 
-export const mockHistory: Record<string, DeploymentHistory[]> = {
+// Deprecated: use getComponentHistory() instead
+const mockHistory: Record<string, DeploymentHistory[]> = {
   "user-service": [
     {
       id: "hist-001",
@@ -335,12 +337,27 @@ export const mockHistory: Record<string, DeploymentHistory[]> = {
   ],
 };
 
-// EIM number and name mock data
-export const mockEims = [
+// Deprecated: use getEims() instead
+const mockEims = [
   { number: "EIM-001", name: "Platform Team" },
   { number: "EIM-002", name: "Commerce Team" },
   { number: "EIM-003", name: "Payments Team" },
 ];
+
+// API-like async functions for mock data
+export async function getComponents(): Promise<ComponentData[]> {
+  return Promise.resolve(mockData);
+}
+
+export async function getComponentHistory(): Promise<
+  Record<string, DeploymentHistory[]>
+> {
+  return Promise.resolve(mockHistory);
+}
+
+export async function getEims(): Promise<{ number: string; name: string }[]> {
+  return Promise.resolve(mockEims);
+}
 
 // Mock server data
 export const mockServers = [
@@ -362,3 +379,5 @@ export function getServers() {
     }, 300); // Simulate network delay
   });
 }
+
+export { mockData, mockHistory, mockEims };
