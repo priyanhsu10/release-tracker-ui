@@ -1,29 +1,40 @@
-import React, { useState } from 'react';
-import { Search, Filter, ExternalLink } from 'lucide-react';
-import { ComponentData } from './types';
-import { mockData, mockHistory } from './data/mockData';
-import DeploymentModal from './components/DeploymentModal';
-import ComponentHistory from './components/ComponentHistory';
+import React, { useState, useEffect } from "react";
+import { Search, Filter, ExternalLink } from "lucide-react";
+import { ComponentData } from "./types";
+import { mockData, mockHistory, mockEims } from "./data/mockData";
+import DeploymentModal from "./components/DeploymentModal";
+import ComponentHistory from "./components/ComponentHistory";
+import { useParams, useNavigate } from "react-router-dom";
 
-const environments = ['dev', 'qa', 'uat', 'prod'];
+const environments = ["dev", "qa", "uat", "prod"];
 
 const getEnvironmentColor = (env: string): string => {
   switch (env) {
-    case 'dev': return 'bg-yellow-50 border-yellow-200';
-    case 'qa': return 'bg-blue-50 border-blue-200';
-    case 'uat': return 'bg-purple-50 border-purple-200';
-    case 'prod': return 'bg-green-50 border-green-200';
-    default: return 'bg-gray-50 border-gray-200';
+    case "dev":
+      return "bg-yellow-50 border-yellow-200";
+    case "qa":
+      return "bg-blue-50 border-blue-200";
+    case "uat":
+      return "bg-purple-50 border-purple-200";
+    case "prod":
+      return "bg-green-50 border-green-200";
+    default:
+      return "bg-gray-50 border-gray-200";
   }
 };
 
 const getEnvironmentTextColor = (env: string): string => {
   switch (env) {
-    case 'dev': return 'text-yellow-700';
-    case 'qa': return 'text-blue-700';
-    case 'uat': return 'text-purple-700';
-    case 'prod': return 'text-green-700';
-    default: return 'text-gray-700';
+    case "dev":
+      return "text-yellow-700";
+    case "qa":
+      return "text-blue-700";
+    case "uat":
+      return "text-purple-700";
+    case "prod":
+      return "text-green-700";
+    default:
+      return "text-gray-700";
   }
 };
 
@@ -36,12 +47,15 @@ const isRecentDeployment = (deployedAt?: string): boolean => {
 };
 
 const formatDateTime = (date?: string, time?: string): string => {
-  if (!date) return '';
+  if (!date) return "";
   if (!time) return date;
   return `${date} at ${time}`;
 };
 
-const Tooltip: React.FC<{ deployment: any; children: React.ReactNode }> = ({ deployment, children }) => {
+const Tooltip: React.FC<{ deployment: any; children: React.ReactNode }> = ({
+  deployment,
+  children,
+}) => {
   const [isVisible, setIsVisible] = useState(false);
 
   return (
@@ -69,7 +83,12 @@ const Tooltip: React.FC<{ deployment: any; children: React.ReactNode }> = ({ dep
             {(deployment.deployedAt || deployment.deployedTime) && (
               <div className="flex items-center gap-1">
                 <span className="font-medium">Deployed:</span>
-                <span>{formatDateTime(deployment.deployedAt, deployment.deployedTime)}</span>
+                <span>
+                  {formatDateTime(
+                    deployment.deployedAt,
+                    deployment.deployedTime
+                  )}
+                </span>
               </div>
             )}
             {deployment.deployedBy && (
@@ -93,9 +112,12 @@ const Tooltip: React.FC<{ deployment: any; children: React.ReactNode }> = ({ dep
 };
 
 function App() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedEnvironment, setSelectedEnvironment] = useState<string>('');
-  const [selectedComponent, setSelectedComponent] = useState<ComponentData | null>(null);
+  const { eimName } = useParams();
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedEnvironment, setSelectedEnvironment] = useState<string>("");
+  const [selectedComponent, setSelectedComponent] =
+    useState<ComponentData | null>(null);
   const [modalState, setModalState] = useState<{
     isOpen: boolean;
     deployment: any;
@@ -104,20 +126,37 @@ function App() {
   }>({
     isOpen: false,
     deployment: null,
-    environment: '',
-    componentName: ''
+    environment: "",
+    componentName: "",
   });
 
-  const filteredData = mockData.filter(component =>
-    component.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Fetch servers when EIM is selected
+  useEffect(() => {
+    if (!eimName) return;
+    // setServersLoading(true); // Removed as per edit hint
+    // setServersError(null); // Removed as per edit hint
+    // getServers() call and related logic removed as server section is not needed
+  }, [eimName]);
 
-  const handleVersionClick = (deployment: any, environment: string, componentName: string) => {
+  // Filter components by EIM (if present) and search term
+  const filteredData = mockData.filter((component) => {
+    const matchesEIM = eimName ? component.owner === eimName : true;
+    const matchesSearch = component.name
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
+    return matchesEIM && matchesSearch;
+  });
+
+  const handleVersionClick = (
+    deployment: any,
+    environment: string,
+    componentName: string
+  ) => {
     setModalState({
       isOpen: true,
       deployment,
       environment,
-      componentName
+      componentName,
     });
   };
 
@@ -133,8 +172,8 @@ function App() {
     setModalState({
       isOpen: false,
       deployment: null,
-      environment: '',
-      componentName: ''
+      environment: "",
+      componentName: "",
     });
   };
 
@@ -153,12 +192,38 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Release Tracker Dashboard</h1>
-          <p className="text-gray-600">Monitor component deployments across all environments</p>
+        {/* Back to EIM Search */}
+        {eimName && (
+          <button
+            className="mb-4 px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+            onClick={() => navigate("/")}
+          >
+            ← Back to EIM Search
+          </button>
+        )}
+        {/* Header and EIM Details Row */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2 sm:mb-0">
+              Release Tracker Dashboard
+            </h1>
+          </div>
+          {eimName &&
+            (() => {
+              const eim = mockEims.find((e) => e.name === eimName);
+              if (!eim) return null;
+              return (
+                <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl shadow-sm min-w-[220px] justify-end">
+                  <div className="flex flex-col text-right">
+                    <span className="text-lg font-bold text-blue-800">
+                      {eim.number}
+                    </span>
+                    <span className="text-base text-gray-700">{eim.name}</span>
+                  </div>
+                </div>
+              );
+            })()}
         </div>
-
         {/* Controls */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -180,7 +245,7 @@ function App() {
                 className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">All Environments</option>
-                {environments.map(env => (
+                {environments.map((env) => (
                   <option key={env} value={env}>
                     {env.toUpperCase()}
                   </option>
@@ -199,10 +264,12 @@ function App() {
                   <th className="text-left py-4 px-6 font-semibold text-gray-900 sticky left-0 bg-gray-50 z-10 min-w-[200px]">
                     Component
                   </th>
-                  {environments.map(env => (
+                  {environments.map((env) => (
                     <th
                       key={env}
-                      className={`text-center py-4 px-6 font-semibold text-gray-900 min-w-[120px] ${getEnvironmentColor(env)}`}
+                      className={`text-center py-4 px-6 font-semibold text-gray-900 min-w-[120px] ${getEnvironmentColor(
+                        env
+                      )}`}
                     >
                       {env.toUpperCase()}
                     </th>
@@ -214,7 +281,7 @@ function App() {
                   <tr
                     key={component.id}
                     className={`hover:bg-gray-50 transition-colors ${
-                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
                     }`}
                   >
                     <td className="py-4 px-6 font-medium text-gray-900 sticky left-0 bg-inherit z-10 border-r border-gray-200">
@@ -225,24 +292,36 @@ function App() {
                         <div>
                           <div className="font-semibold">{component.name}</div>
                           {component.description && (
-                            <div className="text-sm text-gray-500 mt-1">{component.description}</div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              {component.description}
+                            </div>
                           )}
                         </div>
                       </button>
                     </td>
-                    {environments.map(env => {
+                    {environments.map((env) => {
                       const deployment = component.deployments[env];
                       return (
                         <td
                           key={env}
-                          className={`py-4 px-6 text-center border-r border-gray-100 ${getEnvironmentColor(env)}`}
+                          className={`py-4 px-6 text-center border-r border-gray-100 ${getEnvironmentColor(
+                            env
+                          )}`}
                         >
                           {deployment ? (
                             <Tooltip deployment={deployment}>
                               <div className="relative">
                                 <button
-                                  onClick={() => handleVersionClick(deployment, env, component.name)}
-                                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getEnvironmentTextColor(env)} bg-white/70 hover:bg-white/90 transition-colors`}
+                                  onClick={() =>
+                                    handleVersionClick(
+                                      deployment,
+                                      env,
+                                      component.name
+                                    )
+                                  }
+                                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getEnvironmentTextColor(
+                                    env
+                                  )} bg-white/70 hover:bg-white/90 transition-colors`}
                                 >
                                   {deployment.version}
                                 </button>
@@ -266,27 +345,46 @@ function App() {
 
         {/* Summary Stats */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {environments.map(env => {
-            const deployedCount = filteredData.filter(component => component.deployments[env]).length;
-            const recentCount = filteredData.filter(component => 
-              component.deployments[env] && isRecentDeployment(component.deployments[env]?.deployedAt)
+          {environments.map((env) => {
+            const deployedCount = filteredData.filter(
+              (component) => component.deployments[env]
+            ).length;
+            const recentCount = filteredData.filter(
+              (component) =>
+                component.deployments[env] &&
+                isRecentDeployment(component.deployments[env]?.deployedAt)
             ).length;
             const totalCount = filteredData.length;
-            const percentage = totalCount > 0 ? Math.round((deployedCount / totalCount) * 100) : 0;
-            
+            const percentage =
+              totalCount > 0
+                ? Math.round((deployedCount / totalCount) * 100)
+                : 0;
+
             return (
-              <div key={env} className={`rounded-lg p-4 ${getEnvironmentColor(env)}`}>
+              <div
+                key={env}
+                className={`rounded-lg p-4 ${getEnvironmentColor(env)}`}
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">{env.toUpperCase()}</p>
-                    <p className="text-2xl font-bold text-gray-900">{deployedCount}/{totalCount}</p>
+                    <p className="text-sm font-medium text-gray-600">
+                      {env.toUpperCase()}
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {deployedCount}/{totalCount}
+                    </p>
                     {recentCount > 0 && (
                       <p className="text-xs text-red-600 font-medium">
-                        {recentCount} recent deployment{recentCount !== 1 ? 's' : ''}
+                        {recentCount} recent deployment
+                        {recentCount !== 1 ? "s" : ""}
                       </p>
                     )}
                   </div>
-                  <div className={`text-sm font-medium ${getEnvironmentTextColor(env)}`}>
+                  <div
+                    className={`text-sm font-medium ${getEnvironmentTextColor(
+                      env
+                    )}`}
+                  >
                     {percentage}%
                   </div>
                 </div>
@@ -301,7 +399,9 @@ function App() {
           <div className="flex flex-wrap gap-4 text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <div className="relative">
-                <span className="inline-block px-2 py-1 rounded-full bg-gray-100 text-gray-700">v1.0.0</span>
+                <span className="inline-block px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                  v1.0.0
+                </span>
                 <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
               </div>
               <span>Recent deployment (within 24 hours)</span>
@@ -318,16 +418,16 @@ function App() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Deployment Modal */}
-      <DeploymentModal
-        isOpen={modalState.isOpen}
-        onClose={closeModal}
-        deployment={modalState.deployment}
-        environment={modalState.environment}
-        componentName={modalState.componentName}
-      />
+        {/* Deployment Modal */}
+        <DeploymentModal
+          isOpen={modalState.isOpen}
+          onClose={closeModal}
+          deployment={modalState.deployment}
+          environment={modalState.environment}
+          componentName={modalState.componentName}
+        />
+      </div>
     </div>
   );
 }
