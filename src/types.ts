@@ -20,7 +20,6 @@ export interface ComponentData {
   description?: string;
   repository?: string;
   owner?: string;
-  iemId: string;
   deployments: Record<string, DeploymentInfo | null>;
 }
 
@@ -38,14 +37,4 @@ export interface DeploymentHistory {
   gitCommitUrl?: string;
   releaseNotes?: string;
   releaseSummary?: string;
-}
-
-export interface IEM {
-  id: string;
-  name: string;
-  description: string;
-  region: string;
-  status: 'active' | 'maintenance' | 'inactive';
-  componentCount: number;
-  lastUpdated: string;
 }
