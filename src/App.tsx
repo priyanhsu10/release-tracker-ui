@@ -112,6 +112,7 @@ function App() {
 
   // Filter components by selected IEM
   // Show IEM selector if no IEM is selected
+  // Show IEM selector if no IEM is selected
   if (!selectedIEM) {
     return <IEMSelector iems={mockIEMs} onSelectIEM={handleSelectIEM} />;
   }
@@ -145,10 +146,15 @@ function App() {
     setSelectedIEM(iem);
     setSearchTerm('');
     setSelectedEnvironment('');
+    setSearchTerm('');
+    setSelectedEnvironment('');
   };
 
   const handleBackToIEMSelector = () => {
     setSelectedIEM(null);
+    setSelectedComponent(null);
+    setSearchTerm('');
+    setSelectedEnvironment('');
     setSelectedComponent(null);
     setSearchTerm('');
     setSelectedEnvironment('');
@@ -199,6 +205,18 @@ function App() {
                   <span>Components: {iemComponents.length}</span>
                   <span>Last Updated: {selectedIEM.lastUpdated}</span>
                 </div>
+                <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
+                  <span>Region: {selectedIEM.region}</span>
+                  <span>Components: {iemComponents.length}</span>
+                  <span>Last Updated: {selectedIEM.lastUpdated}</span>
+                </div>
+              </div>
+              <div className={`px-3 py-1 rounded-full text-sm font-medium border ${
+                selectedIEM.status === 'active' ? 'bg-green-100 text-green-800 border-green-200' :
+                selectedIEM.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                'bg-red-100 text-red-800 border-red-200'
+              }`}>
+                {selectedIEM.status.charAt(0).toUpperCase() + selectedIEM.status.slice(1)}
               </div>
               <div className={`px-3 py-1 rounded-full text-sm font-medium border ${
                 selectedIEM.status === 'active' ? 'bg-green-100 text-green-800 border-green-200' :
@@ -209,6 +227,8 @@ function App() {
               </div>
             </div>
           </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Release Tracker Dashboard</h2>
+          <p className="text-gray-600">Monitor component deployments across all environments</p>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Release Tracker Dashboard</h2>
           <p className="text-gray-600">Monitor component deployments across all environments</p>
         </div>
@@ -246,6 +266,7 @@ function App() {
 
         {/* Table */}
         {filteredData.length > 0 ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -329,8 +350,20 @@ function App() {
             </p>
           </div>
         )}
+        ) : (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Components Found</h3>
+            <p className="text-gray-600">
+              {searchTerm 
+                ? `No components match your search "${searchTerm}" in this IEM.`
+                : `No components are associated with ${selectedIEM.name}.`
+              }
+            </p>
+          </div>
+        )}
 
         {/* Summary Stats */}
+        {filteredData.length > 0 && (
         {filteredData.length > 0 && (
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {environments.map(env => {
@@ -362,8 +395,10 @@ function App() {
           })}
         </div>
         )}
+        )}
 
         {/* Legend */}
+        {filteredData.length > 0 && (
         {filteredData.length > 0 && (
           <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <h3 className="text-sm font-medium text-gray-900 mb-2">Legend</h3>
@@ -385,8 +420,15 @@ function App() {
               </button>
               <span>Click version for details, component name for history</span>
             </div>
+            <div className="flex items-center gap-2">
+              <button className="inline-block px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs">
+                v1.0.0
+              </button>
+              <span>Click version for details, component name for history</span>
+            </div>
           </div>
         </div>
+        )}
         )}
       </div>
 
