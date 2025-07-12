@@ -7,6 +7,8 @@ import {
   FileText,
   Tag,
   CheckCircle,
+  ExternalLink,
+  Link as LinkIcon,
 } from "lucide-react";
 import { DeploymentInfo } from "../types";
 import { formatDateTime } from "../utils/formatDateTime";
@@ -19,6 +21,31 @@ interface DeploymentModalProps {
   componentName: string;
 }
 
+const getEnvironmentColor = (env: string, isDarkMode = false): string => {
+  switch (env) {
+    case "dev":
+      return isDarkMode
+        ? "text-yellow-300"
+        : "bg-yellow-100 text-yellow-800 border-yellow-200";
+    case "qa":
+      return isDarkMode
+        ? "text-blue-300"
+        : "bg-blue-100 text-blue-800 border-blue-200";
+    case "uat":
+      return isDarkMode
+        ? "text-purple-300"
+        : "bg-purple-100 text-purple-800 border-purple-200";
+    case "prod":
+      return isDarkMode
+        ? "text-green-300"
+        : "bg-green-100 text-green-800 border-green-200";
+    default:
+      return isDarkMode
+        ? "text-gray-300"
+        : "bg-gray-100 text-gray-800 border-gray-200";
+  }
+};
+
 const DeploymentModal: React.FC<DeploymentModalProps> = ({
   isOpen,
   onClose,
@@ -27,31 +54,6 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
   componentName,
 }) => {
   if (!isOpen || !deployment) return null;
-
-  const getEnvironmentColor = (env: string, isDarkMode = false): string => {
-    switch (env) {
-      case "dev":
-        return isDarkMode
-          ? "text-yellow-300"
-          : "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "qa":
-        return isDarkMode
-          ? "text-blue-300"
-          : "bg-blue-100 text-blue-800 border-blue-200";
-      case "uat":
-        return isDarkMode
-          ? "text-purple-300"
-          : "bg-purple-100 text-purple-800 border-purple-200";
-      case "prod":
-        return isDarkMode
-          ? "text-green-300"
-          : "bg-green-100 text-green-800 border-green-200";
-      default:
-        return isDarkMode
-          ? "text-gray-300"
-          : "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -62,15 +64,13 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               Deployment Details
             </h2>
+            {/* Environment badge */}
             <span
-              className={`px-2 py-1 rounded-full text-xs font-medium border ${getEnvironmentColor(
+              className={`px-2 py-1 rounded-full text-xs font-semibold border ${getEnvironmentColor(
                 environment
-              )} dark:border-0 dark:${getEnvironmentColor(
-                environment,
-                true
-              )} dark:bg-transparent dark:text-${environment}-300`}
+              )} uppercase tracking-wide`}
             >
-              {environment.toUpperCase()}
+              {environment}
             </span>
           </div>
           <button
@@ -98,20 +98,27 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
                 <label className="text-sm font-medium text-gray-500 dark:text-gray-300">
                   Version
                 </label>
-                <div className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-gray-400 dark:text-gray-300" />
-                  <p className="text-lg font-mono text-gray-900 dark:text-white">
+                <div className="flex items-center gap-2 mt-1">
+                  {/* Version badge */}
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700 font-mono">
+                    <Tag className="h-4 w-4 mr-1 text-blue-400 dark:text-blue-300" />
                     {deployment.artifactVersion}
-                  </p>
+                  </span>
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500 dark:text-gray-300">
                   Environment
                 </label>
-                <p className="text-lg text-gray-900 dark:text-white capitalize">
-                  {environment}
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${getEnvironmentColor(
+                      environment
+                    )} uppercase tracking-wide`}
+                  >
+                    {environment}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -152,6 +159,52 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Links */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {deployment.branchUrl && (
+              <div>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-300">
+                  Artifact/Branch
+                </label>
+                <div className="flex items-center gap-2 mt-1">
+                  <a
+                    href={deployment.branchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-300 hover:underline flex items-center gap-1"
+                  >
+                    <LinkIcon className="h-4 w-4" />
+                    <span className="truncate max-w-[160px]">
+                      {deployment.branchUrl}
+                    </span>
+                    <ExternalLink className="h-4 w-4 ml-1" />
+                  </a>
+                </div>
+              </div>
+            )}
+            {deployment.gitCommitUrl && (
+              <div>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-300">
+                  Git Commit
+                </label>
+                <div className="flex items-center gap-2 mt-1">
+                  <a
+                    href={deployment.gitCommitUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-300 hover:underline flex items-center gap-1"
+                  >
+                    <GitBranch className="h-4 w-4" />
+                    <span className="truncate max-w-[120px]">
+                      {deployment.gitCommitUrl}
+                    </span>
+                    <ExternalLink className="h-4 w-4 ml-1" />
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Build Number */}
