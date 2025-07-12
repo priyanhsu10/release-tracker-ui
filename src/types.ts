@@ -30,7 +30,7 @@ export interface DeploymentHistory {
   deployedAt: string;
   deployedTime: string;
   deployedBy: string;
-  status: 'success' | 'failed' | 'rollback';
+  status: "success" | "failed" | "rollback";
   duration?: string;
   jiraTicket?: string;
   gitBranch?: string;
@@ -38,3 +38,5 @@ export interface DeploymentHistory {
   releaseNotes?: string;
   releaseSummary?: string;
 }
+
+export type Theme = "light" | "dark";

@@ -345,18 +345,58 @@ const mockEims = [
 ];
 
 // API-like async functions for mock data
-export async function getComponents(): Promise<ComponentData[]> {
-  return Promise.resolve(mockData);
+export async function getComponents(eimId?: string): Promise<ComponentData[]> {
+  if (!eimId) {
+    return Promise.resolve(mockData);
+  }
+  const filteredComponents = mockData.filter(
+    (component: ComponentData) => component.owner === eimId
+  );
+  return Promise.resolve(filteredComponents);
 }
 
-export async function getComponentHistory(): Promise<
-  Record<string, DeploymentHistory[]>
-> {
-  return Promise.resolve(mockHistory);
+export async function getComponentHistory(
+  eimId?: string
+): Promise<Record<string, DeploymentHistory[]>> {
+  if (!eimId) {
+    return Promise.resolve(mockHistory);
+  }
+  const filteredComponents = mockData.filter(
+    (component: ComponentData) => component.owner === eimId
+  );
+  const filteredHistory: Record<string, DeploymentHistory[]> = {};
+  filteredComponents.forEach((component: ComponentData) => {
+    if (mockHistory[component.id]) {
+      filteredHistory[component.id] = mockHistory[component.id];
+    }
+  });
+  return Promise.resolve(filteredHistory);
 }
 
-export async function getEims(): Promise<{ number: string; name: string }[]> {
-  return Promise.resolve(mockEims);
+export async function getEims(
+  eimId?: string
+): Promise<{ number: string; name: string }[]> {
+  if (!eimId) {
+    return Promise.resolve(mockEims);
+  }
+  const filteredEim = mockEims.find(
+    (eim: { number: string; name: string }) => eim.name === eimId
+  );
+  return Promise.resolve(filteredEim ? [filteredEim] : []);
+}
+
+export async function searchEims(
+  searchTerm: string
+): Promise<{ number: string; name: string }[]> {
+  if (!searchTerm.trim()) {
+    return Promise.resolve([]);
+  }
+  const filteredEims = mockEims.filter(
+    (eim: { number: string; name: string }) =>
+      eim.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      eim.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  return Promise.resolve(filteredEims);
 }
 
 // Mock server data
