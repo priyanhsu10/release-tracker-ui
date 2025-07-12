@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Search, Filter, ExternalLink, Sun, Moon } from "lucide-react";
-import { ComponentData, Theme } from "./types";
+import { ComponentData, Theme, Eim } from "./types";
 import { DeploymentHistory } from "./types";
 import { getComponents, getComponentHistory, getEims } from "./data/mockData";
 import DeploymentModal from "./components/DeploymentModal";
 import ComponentHistory from "./components/ComponentHistory";
 import { useParams, useNavigate } from "react-router-dom";
-
-const environments = ["dev", "qa", "uat", "prod"];
+import { formatDateTime } from "./utils/formatDateTime";
 
 const getEnvironmentColor = (env: string, darkMode = false): string => {
   if (darkMode) {
@@ -17,6 +16,8 @@ const getEnvironmentColor = (env: string, darkMode = false): string => {
       case "qa":
         return "dark:bg-blue-900/30";
       case "uat":
+        return "dark:bg-purple-900/30";
+      case "fut":
         return "dark:bg-purple-900/30";
       case "prod":
         return "dark:bg-green-900/30";
@@ -77,12 +78,6 @@ const isRecentDeployment = (deployedAt?: string): boolean => {
   return diffInHours <= 24;
 };
 
-const formatDateTime = (date?: string, time?: string): string => {
-  if (!date) return "";
-  if (!time) return date;
-  return `${date} at ${time}`;
-};
-
 const Tooltip: React.FC<{
   deployment: ComponentData["deployments"][string];
   children: React.ReactNode;
@@ -105,23 +100,18 @@ const Tooltip: React.FC<{
           <div className="space-y-1">
             <div className="flex items-center gap-1">
               <span className="font-medium">Version:</span>
-              <span>{deployment.version}</span>
+              <span>{deployment.artifactVersion}</span>
             </div>
-            {deployment.jiraTicket && (
+            {deployment.jiraTicketId && (
               <div className="flex items-center gap-1">
                 <span className="font-medium">Ticket:</span>
-                <span>{deployment.jiraTicket}</span>
+                <span>{deployment.jiraTicketId}</span>
               </div>
             )}
             {(deployment.deployedAt || deployment.deployedTime) && (
               <div className="flex items-center gap-1">
                 <span className="font-medium">Deployed:</span>
-                <span>
-                  {formatDateTime(
-                    deployment.deployedAt,
-                    deployment.deployedTime
-                  )}
-                </span>
+                <span>{formatDateTime(deployment.deployedAt)}</span>
               </div>
             )}
             {deployment.deployedBy && (
@@ -130,7 +120,7 @@ const Tooltip: React.FC<{
                 <span>{deployment.deployedBy}</span>
               </div>
             )}
-            {deployment.artifactUrl && (
+            {deployment.branchUrl && (
               <div className="flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" />
                 <span className="text-blue-300">View Artifact</span>
@@ -195,37 +185,69 @@ function App() {
   const [componentHistory, setComponentHistory] = useState<
     Record<string, DeploymentHistory[]>
   >({});
-  const [eims, setEims] = useState<{ number: string; name: string }[]>([]);
+  const [currentEim, setCurrentEim] = useState<Eim | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    Promise.all([
-      getComponents(eimName),
-      getComponentHistory(eimName),
-      getEims(eimName),
-    ])
-      .then(([components, history, eims]) => {
+
+    const fetchData = async () => {
+      try {
+        const [components, history, eims] = await Promise.all([
+          getComponents(eimName),
+          getComponentHistory(eimName),
+          getEims(eimName),
+        ]);
+
         setComponents(components);
         setComponentHistory(history);
-        setEims(eims);
+
+        // Set current EIM if we have EIM data and eimName
+        if (eimName && eims.length > 0) {
+          const foundEim = eims.find((e: Eim) => e.id === Number(eimName));
+          setCurrentEim(foundEim || null);
+        } else {
+          setCurrentEim(null);
+        }
+
         setLoading(false);
-      })
-      .catch(() => {
+      } catch (err) {
+        console.error("Error fetching data:", err);
         setError("Failed to load data");
         setLoading(false);
-      });
+      }
+    };
+
+    fetchData();
   }, [eimName]);
 
-  // Filter components by search term only (EIM filtering is now done in the API)
+  // Filter components by search term and selected environment
   const filteredData = components.filter((component: ComponentData) => {
     const matchesSearch = component.name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    const matchesEnv =
+      !selectedEnvironment || component.deployments[selectedEnvironment];
+    return matchesSearch && matchesEnv;
   });
+
+  // Dynamically compute all unique environments from components data, always including standard ones
+  const environments = React.useMemo(() => {
+    const standard = ["dev", "qa", "uat", "prod"];
+    const envSet = new Set<string>(standard);
+    components.forEach((component) => {
+      Object.keys(component.deployments).forEach((env) => {
+        if (component.deployments[env]) {
+          envSet.add(env);
+        }
+      });
+    });
+    // Standard environments in order, then any others
+    const others = Array.from(envSet).filter((env) => !standard.includes(env));
+    return [...standard, ...others];
+  }, [components]);
 
   const handleVersionClick = (
     deployment: ComponentData["deployments"][string],
@@ -289,15 +311,15 @@ function App() {
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 transition-colors duration-200">
         <div className="max-w-7xl mx-auto">
-          {/* Header with theme toggle */}
-          <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-0">
+          {/* Header with theme toggle and EIM info */}
+          <div className="mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-0 truncate">
                 Release Tracker Dashboard
               </h1>
               <button
                 onClick={toggleTheme}
-                className="ml-4 p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ml-2"
                 aria-label="Toggle theme"
               >
                 {theme === "light" ? (
@@ -307,31 +329,42 @@ function App() {
                 )}
               </button>
             </div>
-            {eimName &&
-              (() => {
-                const eim = eims.find(
-                  (e: (typeof eims)[number]) => e.name === eimName
-                );
-                if (!eim) return null;
-                return (
-                  <div className="flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-xl shadow-sm min-w-[220px] justify-end">
+            {/* Compact EIM Info Block on the right */}
+            {eimName && (
+              <div className="flex-shrink-0 min-w-[220px] max-w-xs ml-auto">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4 shadow-sm">
+                  {currentEim ? (
                     <div className="flex flex-col text-right">
-                      <span className="text-lg font-bold text-blue-800 dark:text-blue-200">
-                        {eim.number}
+                      <span className="text-lg font-bold text-blue-800 dark:text-blue-200 truncate">
+                        {currentEim.name}
                       </span>
-                      <span className="text-base text-gray-700 dark:text-gray-300">
-                        {eim.name}
+                      <span className="text-xs text-blue-700 dark:text-blue-300 font-mono">
+                        {currentEim.eimNumber}
+                      </span>
+                      <span className="text-xs text-gray-700 dark:text-gray-300">
+                        {currentEim.description}
                       </span>
                     </div>
-                  </div>
-                );
-              })()}
+                  ) : (
+                    <div className="flex flex-col items-end min-h-[60px] justify-center">
+                      <span className="text-base font-bold text-blue-900 dark:text-blue-100 mb-1">
+                        EIM Not Found
+                      </span>
+                      <span className="text-xs text-blue-800 dark:text-blue-200">
+                        No info for:{" "}
+                        <span className="font-mono">{eimName}</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Back to EIM Search */}
+          {/* Back to EIM Search button below header */}
           {eimName && (
             <button
-              className="mb-4 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+              className="mb-4 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors whitespace-nowrap"
               onClick={() => navigate("/")}
             >
               ← Back to EIM Search
@@ -445,7 +478,7 @@ function App() {
                                       }
                                       className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${envText} ${envTextDark} bg-white/70 dark:bg-gray-700 hover:bg-white/90 dark:hover:bg-gray-600 transition-colors`}
                                     >
-                                      {deployment.version}
+                                      {deployment.artifactVersion}
                                     </button>
                                     {isRecentDeployment(
                                       deployment.deployedAt

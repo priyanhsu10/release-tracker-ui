@@ -1,17 +1,23 @@
 export interface DeploymentInfo {
-  version: string;
-  jiraTicket?: string;
-  artifactUrl?: string;
-  deployedAt?: string;
-  deployedTime?: string;
-  deployedBy?: string;
-  gitBranch?: string;
-  gitCommitUrl?: string;
+  id: number;
+  artifactVersion: string;
+  deployedAt: string;
+  deployedTime?: string | null;
+  deployedBy: string;
+  status: "success" | "failed" | "rollback";
+  duration?: string | null;
+  jiraTicketId?: string;
+  branchUrl?: string;
+  gitCommitUrl?: string | null;
   releaseNotes?: string;
-  releaseSummary?: string;
-  buildNumber?: string;
-  approvedBy?: string;
-  rollbackUrl?: string;
+  buildNumber?: string | null;
+  changeNumber?: string;
+  componentName: string;
+  componentId: number;
+  environmentId: number;
+  eimId: number;
+  rn: number;
+  envName: string;
 }
 
 export interface ComponentData {
@@ -24,19 +30,38 @@ export interface ComponentData {
 }
 
 export interface DeploymentHistory {
-  id: string;
-  version: string;
-  environment: string;
+  id: number;
+  artifactVersion: string;
   deployedAt: string;
-  deployedTime: string;
+  deployedTime?: string | null;
   deployedBy: string;
   status: "success" | "failed" | "rollback";
-  duration?: string;
-  jiraTicket?: string;
-  gitBranch?: string;
-  gitCommitUrl?: string;
+  duration?: string | null;
+  jiraTicketId?: string;
+  branchUrl?: string;
+  gitCommitUrl?: string | null;
   releaseNotes?: string;
-  releaseSummary?: string;
+  buildNumber?: string | null;
+  changeNumber?: string;
+  componentName: string;
+  componentId: number;
+  environmentId: number;
+  eimId: number;
+  rn: number;
+  envName: string;
+}
+
+// New type for API response structure
+export interface ApiDeploymentResponse {
+  [componentName: string]: DeploymentInfo[];
+}
+
+// New EIM interface
+export interface Eim {
+  id: number;
+  eimNumber: string;
+  name: string;
+  description: string;
 }
 
 export type Theme = "light" | "dark";

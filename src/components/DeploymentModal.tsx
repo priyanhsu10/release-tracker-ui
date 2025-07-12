@@ -1,7 +1,6 @@
 import React from "react";
 import {
   X,
-  ExternalLink,
   GitBranch,
   Clock,
   User,
@@ -10,6 +9,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { DeploymentInfo } from "../types";
+import { formatDateTime } from "../utils/formatDateTime";
 
 interface DeploymentModalProps {
   isOpen: boolean;
@@ -27,12 +27,6 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
   componentName,
 }) => {
   if (!isOpen || !deployment) return null;
-
-  const formatDateTime = (date?: string, time?: string): string => {
-    if (!date) return "";
-    if (!time) return date;
-    return `${date} at ${time}`;
-  };
 
   const getEnvironmentColor = (env: string, isDarkMode = false): string => {
     switch (env) {
@@ -107,7 +101,7 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4 text-gray-400 dark:text-gray-300" />
                   <p className="text-lg font-mono text-gray-900 dark:text-white">
-                    {deployment.version}
+                    {deployment.artifactVersion}
                   </p>
                 </div>
               </div>
@@ -140,22 +134,19 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-gray-400 dark:text-gray-300" />
                   <p className="text-lg text-gray-900 dark:text-white">
-                    {formatDateTime(
-                      deployment.deployedAt,
-                      deployment.deployedTime
-                    )}
+                    {formatDateTime(deployment.deployedAt)}
                   </p>
                 </div>
               </div>
-              {deployment.approvedBy && (
+              {deployment.changeNumber && (
                 <div>
                   <label className="text-sm font-medium text-gray-500 dark:text-gray-300">
-                    Approved By
+                    Change Number
                   </label>
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-300" />
                     <p className="text-lg text-gray-900 dark:text-white">
-                      {deployment.approvedBy}
+                      {deployment.changeNumber}
                     </p>
                   </div>
                 </div>
@@ -163,15 +154,15 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
             </div>
           </div>
 
-          {/* Release Summary */}
-          {deployment.releaseSummary && (
+          {/* Build Number */}
+          {deployment.buildNumber && (
             <div>
               <label className="text-sm font-medium text-gray-500 dark:text-gray-300 mb-2 block">
-                Release Summary
+                Build Number
               </label>
               <div className="bg-blue-50 dark:bg-gray-800 border border-blue-200 dark:border-gray-700 rounded-lg p-4">
                 <p className="text-gray-900 dark:text-white">
-                  {deployment.releaseSummary}
+                  {deployment.buildNumber}
                 </p>
               </div>
             </div>
@@ -196,13 +187,13 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
 
           {/* Technical Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {deployment.jiraTicket && (
+            {deployment.jiraTicketId && (
               <div>
                 <label className="text-sm font-medium text-gray-500 dark:text-gray-300">
                   Jira Ticket
                 </label>
                 <p className="text-gray-900 dark:text-white font-mono">
-                  {deployment.jiraTicket}
+                  {deployment.jiraTicketId}
                 </p>
               </div>
             )}
@@ -216,15 +207,15 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
                 </p>
               </div>
             )}
-            {deployment.gitBranch && (
+            {deployment.branchUrl && (
               <div>
                 <label className="text-sm font-medium text-gray-500 dark:text-gray-300">
-                  Git Branch
+                  Branch URL
                 </label>
                 <div className="flex items-center gap-2">
                   <GitBranch className="h-4 w-4 text-gray-400 dark:text-gray-300" />
                   <p className="text-gray-900 dark:text-white font-mono">
-                    {deployment.gitBranch}
+                    {deployment.branchUrl}
                   </p>
                 </div>
               </div>
@@ -237,19 +228,6 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
               Links
             </h3>
             <div className="grid grid-cols-1 gap-2">
-              {deployment.artifactUrl && (
-                <a
-                  href={deployment.artifactUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <ExternalLink className="h-4 w-4 text-gray-400 dark:text-gray-300" />
-                  <span className="text-gray-900 dark:text-white">
-                    View Artifact
-                  </span>
-                </a>
-              )}
               {deployment.gitCommitUrl && (
                 <a
                   href={deployment.gitCommitUrl}
@@ -260,19 +238,6 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
                   <GitBranch className="h-4 w-4 text-gray-400 dark:text-gray-300" />
                   <span className="text-gray-900 dark:text-white">
                     View Commit
-                  </span>
-                </a>
-              )}
-              {deployment.rollbackUrl && (
-                <a
-                  href={deployment.rollbackUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors"
-                >
-                  <ExternalLink className="h-4 w-4 text-red-400 dark:text-red-300" />
-                  <span className="text-red-900 dark:text-red-200">
-                    Rollback Options
                   </span>
                 </a>
               )}

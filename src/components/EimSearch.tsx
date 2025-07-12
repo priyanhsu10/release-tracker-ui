@@ -2,13 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { searchEims } from "../data/mockData";
 import { Search, Sun, Moon } from "lucide-react";
-import { Theme } from "../types";
+import { Theme, Eim } from "../types";
 
 const EimSearch: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState<
-    { number: string; name: string }[]
-  >([]);
+  const [searchResults, setSearchResults] = useState<Eim[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>(() => {
@@ -120,15 +118,22 @@ const EimSearch: React.FC = () => {
           {!loading &&
             !error &&
             searchResults.map((eim) => (
-              <li key={eim.number}>
+              <li key={eim.id}>
                 <button
                   className="w-full text-left py-2 px-2 hover:bg-blue-50 dark:hover:bg-gray-700 rounded transition-colors font-medium text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-200 flex flex-col items-start"
-                  onClick={() => handleSelect(eim.name)}
+                  onClick={() => handleSelect(eim.id.toString())}
                 >
-                  <span className="text-base font-semibold">{eim.number}</span>
+                  <span className="text-base font-semibold">
+                    {eim.eimNumber}
+                  </span>
                   <span className="text-sm text-gray-700 dark:text-gray-300">
                     {eim.name}
                   </span>
+                  {eim.description && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {eim.description}
+                    </span>
+                  )}
                 </button>
               </li>
             ))}

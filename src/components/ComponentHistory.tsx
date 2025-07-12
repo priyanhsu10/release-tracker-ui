@@ -28,10 +28,25 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
 
   const filteredHistory = history.filter((deployment) => {
     const envMatch =
-      !selectedEnvironment || deployment.environment === selectedEnvironment;
+      !selectedEnvironment ||
+      deployment.envName?.toLowerCase() === selectedEnvironment.toLowerCase();
     const statusMatch = !selectedStatus || deployment.status === selectedStatus;
     return envMatch && statusMatch;
   });
+
+  // Dynamically compute all unique environments from history data, always including standard ones
+  const environments = React.useMemo(() => {
+    const standard = ["dev", "qa", "uat", "prod"];
+    const envSet = new Set<string>(standard);
+    history.forEach((deployment) => {
+      if (deployment.envName) {
+        envSet.add(deployment.envName.toLowerCase());
+      }
+    });
+    // Standard environments in order, then any others
+    const others = Array.from(envSet).filter((env) => !standard.includes(env));
+    return [...standard, ...others];
+  }, [history]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -60,7 +75,8 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
   };
 
   const getEnvironmentColor = (env: string): string => {
-    switch (env) {
+    const envLower = env?.toLowerCase();
+    switch (envLower) {
       case "dev":
         return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "qa":
@@ -74,11 +90,12 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
     }
   };
 
-  const formatDateTime = (date: string, time: string): string => {
+  const formatDateTime = (date?: string, time?: string): string => {
+    if (!date) return "Unknown date";
+    if (!time) return date;
     return `${date} at ${time}`;
   };
 
-  const environments = ["dev", "qa", "uat", "prod"];
   const statuses = ["success", "failed", "rollback"];
 
   return (
@@ -98,17 +115,17 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
             <div className="flex items-start justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                  {component.name}
+                  {component?.name || "Unknown Component"}
                 </h1>
                 <p className="text-gray-600 dark:text-gray-300 mb-4">
-                  {component.description}
+                  {component?.description || "No description available"}
                 </p>
                 <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                   <div className="flex items-center gap-1">
                     <User className="h-4 w-4" />
-                    <span>Owner: {component.owner}</span>
+                    <span>Owner: {component?.owner || "Unknown"}</span>
                   </div>
-                  {component.repository && (
+                  {component?.repository && (
                     <a
                       href={component.repository}
                       target="_blank"
@@ -126,7 +143,7 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
               {/* Current Deployments Summary */}
               <div className="flex gap-2">
                 {environments.map((env) => {
-                  const deployment = component.deployments[env];
+                  const deployment = component?.deployments?.[env];
                   const envTextDark =
                     {
                       dev: "dark:text-yellow-300",
@@ -144,7 +161,7 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
                         {env.toUpperCase()}
                       </div>
                       <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        {deployment ? deployment.version : "\u2014"}
+                        {deployment?.artifactVersion || "\u2014"}
                       </div>
                     </div>
                   );
@@ -210,13 +227,14 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
               </div>
             ) : (
               filteredHistory.map((deployment) => {
+                const envName = deployment.envName?.toLowerCase() || "unknown";
                 const envTextDark =
                   {
                     dev: "dark:text-yellow-300",
                     qa: "dark:text-blue-300",
                     uat: "dark:text-purple-300",
                     prod: "dark:text-green-300",
-                  }[deployment.environment] || "dark:text-gray-200";
+                  }[envName] || "dark:text-gray-200";
                 const statusTextDark =
                   {
                     success: "dark:text-green-300",
@@ -237,14 +255,14 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white font-mono">
-                              {deployment.version}
+                              {deployment.artifactVersion || "Unknown Version"}
                             </h3>
                             <span
                               className={`px-2 py-1 rounded-full text-xs font-medium border ${getEnvironmentColor(
-                                deployment.environment
+                                deployment.envName || "unknown"
                               )} ${envTextDark} dark:bg-transparent dark:border-0`}
                             >
-                              {deployment.environment.toUpperCase()}
+                              {(deployment.envName || "UNKNOWN").toUpperCase()}
                             </span>
                             <span
                               className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
@@ -262,13 +280,13 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
                               <span>
                                 {formatDateTime(
                                   deployment.deployedAt,
-                                  deployment.deployedTime
+                                  deployment.deployedTime || undefined
                                 )}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <User className="h-4 w-4" />
-                              <span>{deployment.deployedBy}</span>
+                              <span>{deployment.deployedBy || "Unknown"}</span>
                             </div>
                             {deployment.duration && (
                               <div className="flex items-center gap-2">
@@ -277,12 +295,6 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
                               </div>
                             )}
                           </div>
-
-                          {deployment.releaseSummary && (
-                            <p className="text-gray-700 dark:text-gray-200 mb-3">
-                              {deployment.releaseSummary}
-                            </p>
-                          )}
 
                           {deployment.releaseNotes && (
                             <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 mb-3">
@@ -293,13 +305,13 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
                           )}
 
                           <div className="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
-                            {deployment.jiraTicket && (
-                              <span>Ticket: {deployment.jiraTicket}</span>
+                            {deployment.jiraTicketId && (
+                              <span>Ticket: {deployment.jiraTicketId}</span>
                             )}
-                            {deployment.gitBranch && (
+                            {deployment.branchUrl && (
                               <span className="flex items-center gap-1">
                                 <GitBranch className="h-3 w-3" />
-                                {deployment.gitBranch}
+                                {deployment.branchUrl}
                               </span>
                             )}
                           </div>
