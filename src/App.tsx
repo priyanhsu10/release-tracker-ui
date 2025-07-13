@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Search, Filter, ExternalLink, Sun, Moon } from "lucide-react";
+import {
+  Search,
+  Filter,
+  ExternalLink,
+  Sun,
+  Moon,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { ComponentData, Theme, Eim } from "./types";
 import { DeploymentHistory } from "./types";
 import { getComponents, getComponentHistory, getEims } from "./data/mockData";
@@ -188,40 +197,102 @@ function App() {
   const [currentEim, setCurrentEim] = useState<Eim | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [timezone, setTimezone] = useState<string>(
+    () => localStorage.getItem("timezone") || "UTC"
+  );
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // Reduced from 10 to make pagination more visible
 
   useEffect(() => {
-    setLoading(true);
+    localStorage.setItem("timezone", timezone);
+  }, [timezone]);
+
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const timezones = [
+    "UTC",
+    "America/New_York",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Europe/Paris",
+    "Asia/Kolkata",
+    "Asia/Tokyo",
+    "Asia/Hong_Kong",
+    "Australia/Sydney",
+  ];
+
+  const fetchData = async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
 
-    const fetchData = async () => {
-      try {
-        const [components, history, eims] = await Promise.all([
-          getComponents(eimName),
-          getComponentHistory(eimName),
-          getEims(eimName),
-        ]);
+    try {
+      const [components, history, eims] = await Promise.all([
+        getComponents(eimName),
+        getComponentHistory(eimName),
+        getEims(eimName),
+      ]);
 
-        setComponents(components);
-        setComponentHistory(history);
+      setComponents(components);
+      setComponentHistory(history);
 
-        // Set current EIM if we have EIM data and eimName
-        if (eimName && eims.length > 0) {
-          const foundEim = eims.find((e: Eim) => e.id === Number(eimName));
-          setCurrentEim(foundEim || null);
-        } else {
-          setCurrentEim(null);
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError("Failed to load data");
-        setLoading(false);
+      // Set current EIM if we have EIM data and eimName
+      if (eimName && eims.length > 0) {
+        const foundEim = eims.find((e: Eim) => e.id === Number(eimName));
+        setCurrentEim(foundEim || null);
+      } else {
+        setCurrentEim(null);
       }
-    };
 
+      setLoading(false);
+      setIsRefreshing(false);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Failed to load data");
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, [eimName]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchData(false);
+  };
+
+  // Format current time in selected timezone
+  const formatCurrentTime = (date: Date, tz: string): string => {
+    try {
+      return date.toLocaleTimeString("en-US", {
+        timeZone: tz,
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch {
+      // Fallback to UTC if timezone is invalid
+      return date.toLocaleTimeString("en-US", {
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    }
+  };
 
   // Filter components by search term and selected environment
   const filteredData = components.filter((component: ComponentData) => {
@@ -232,6 +303,21 @@ function App() {
       !selectedEnvironment || component.deployments[selectedEnvironment];
     return matchesSearch && matchesEnv;
   });
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedEnvironment]);
+
+  // Calculate pagination for component table
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
 
   // Dynamically compute all unique environments from components data, always including standard ones
   const environments = React.useMemo(() => {
@@ -302,6 +388,24 @@ function App() {
           component={selectedComponent}
           history={history}
           onBack={handleBackToDashboard}
+          timezone={timezone}
+          onDeploymentClick={(deployment, environment) => {
+            setModalState({
+              isOpen: true,
+              deployment: deployment as ComponentData["deployments"][string],
+              environment,
+              componentName: selectedComponent.name,
+            });
+          }}
+        />
+        {/* Deployment Modal for Component History */}
+        <DeploymentModal
+          isOpen={modalState.isOpen}
+          onClose={closeModal}
+          deployment={modalState.deployment}
+          environment={modalState.environment}
+          componentName={modalState.componentName}
+          timezone={timezone}
         />
       </ThemeContext.Provider>
     );
@@ -327,6 +431,18 @@ function App() {
                 ) : (
                   <Sun className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                 )}
+              </button>
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Refresh data"
+              >
+                <RefreshCw
+                  className={`h-5 w-5 text-gray-600 dark:text-gray-400 ${
+                    isRefreshing ? "animate-spin" : ""
+                  }`}
+                />
               </button>
             </div>
             {/* Compact EIM Info Block on the right */}
@@ -360,6 +476,35 @@ function App() {
               </div>
             )}
           </div>
+
+          {eimName && (
+            <div className="mb-4 flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Timezone:
+                </label>
+                <select
+                  value={timezone}
+                  onChange={(e) => setTimezone(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  {timezones.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Current Time:
+                </span>
+                <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-mono text-gray-900 dark:text-white">
+                  {formatCurrentTime(currentTime, timezone)}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Back to EIM Search button below header */}
           {eimName && (
@@ -422,7 +567,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredData.map(
+                  {paginatedData.map(
                     (component: ComponentData, index: number) => (
                       <tr
                         key={component.id}
@@ -467,7 +612,7 @@ function App() {
                             >
                               {deployment ? (
                                 <Tooltip deployment={deployment}>
-                                  <div className="relative">
+                                  <div className="relative flex flex-col items-center">
                                     <button
                                       onClick={() =>
                                         handleVersionClick(
@@ -480,6 +625,12 @@ function App() {
                                     >
                                       {deployment.artifactVersion}
                                     </button>
+                                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                      {formatDateTime(
+                                        deployment.deployedAt,
+                                        timezone
+                                      )}
+                                    </span>
                                     {isRecentDeployment(
                                       deployment.deployedAt
                                     ) && (
@@ -502,6 +653,71 @@ function App() {
               </table>
             </div>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages >= 1 && (
+            <div className="mt-4 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+              <div className="text-sm text-gray-600 dark:text-gray-300">
+                {totalPages === 1
+                  ? `All ${filteredData.length} components shown (no pagination needed)`
+                  : `Showing ${startIndex + 1}-${Math.min(
+                      endIndex,
+                      filteredData.length
+                    )} of ${filteredData.length} components`}
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Previous page"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  {/* Page numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => goToPage(pageNum)}
+                          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                            currentPage === pageNum
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                              : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Next page"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Summary Stats */}
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -602,6 +818,7 @@ function App() {
             deployment={modalState.deployment}
             environment={modalState.environment}
             componentName={modalState.componentName}
+            timezone={timezone}
           />
         </div>
       </div>

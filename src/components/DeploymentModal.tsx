@@ -19,6 +19,7 @@ interface DeploymentModalProps {
   deployment: DeploymentInfo | null;
   environment: string;
   componentName: string;
+  timezone: string;
 }
 
 const getEnvironmentColor = (env: string, isDarkMode = false): string => {
@@ -52,6 +53,7 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
   deployment,
   environment,
   componentName,
+  timezone,
 }) => {
   if (!isOpen || !deployment) return null;
 
@@ -141,7 +143,7 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-gray-400 dark:text-gray-300" />
                   <p className="text-lg text-gray-900 dark:text-white">
-                    {formatDateTime(deployment.deployedAt)}
+                    {formatDateTime(deployment.deployedAt, timezone)}
                   </p>
                 </div>
               </div>
@@ -166,7 +168,7 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
             {deployment.branchUrl && (
               <div>
                 <label className="text-sm font-medium text-gray-500 dark:text-gray-300">
-                  Artifact/Branch
+                  Artifact
                 </label>
                 <div className="flex items-center gap-2 mt-1">
                   <a
@@ -267,9 +269,14 @@ const DeploymentModal: React.FC<DeploymentModalProps> = ({
                 </label>
                 <div className="flex items-center gap-2">
                   <GitBranch className="h-4 w-4 text-gray-400 dark:text-gray-300" />
-                  <p className="text-gray-900 dark:text-white font-mono">
+                  <a
+                    href={deployment.branchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-300 hover:underline font-mono truncate max-w-[200px]"
+                  >
                     {deployment.branchUrl}
-                  </p>
+                  </a>
                 </div>
               </div>
             )}

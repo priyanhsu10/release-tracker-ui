@@ -9,30 +9,89 @@ import {
   CheckCircle,
   RotateCcw,
   Filter,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
 } from "lucide-react";
 import { ComponentData, DeploymentHistory } from "../types";
+import { formatDateTime } from "../utils/formatDateTime";
 
 interface ComponentHistoryProps {
   component: ComponentData;
   history: DeploymentHistory[];
   onBack: () => void;
+  timezone: string;
+  onDeploymentClick?: (
+    deployment: DeploymentHistory,
+    environment: string
+  ) => void;
 }
 
 const ComponentHistory: React.FC<ComponentHistoryProps> = ({
   component,
   history,
   onBack,
+  timezone,
+  onDeploymentClick,
 }) => {
   const [selectedEnvironment, setSelectedEnvironment] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // Reduced from 10 to make pagination more visible
 
   const filteredHistory = history.filter((deployment) => {
     const envMatch =
       !selectedEnvironment ||
       deployment.envName?.toLowerCase() === selectedEnvironment.toLowerCase();
     const statusMatch = !selectedStatus || deployment.status === selectedStatus;
-    return envMatch && statusMatch;
+
+    // Date range filtering
+    let dateMatch = true;
+    if (startDate || endDate) {
+      const deploymentDate = new Date(deployment.deployedAt);
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (deploymentDate < start) {
+          dateMatch = false;
+        }
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (deploymentDate > end) {
+          dateMatch = false;
+        }
+      }
+    }
+
+    return envMatch && statusMatch && dateMatch;
   });
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedEnvironment, selectedStatus, startDate, endDate]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedHistory = filteredHistory.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const clearAllFilters = () => {
+    setSelectedEnvironment("");
+    setSelectedStatus("");
+    setStartDate("");
+    setEndDate("");
+    setCurrentPage(1);
+  };
 
   // Dynamically compute all unique environments from history data, always including standard ones
   const environments = React.useMemo(() => {
@@ -88,12 +147,6 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
-  };
-
-  const formatDateTime = (date?: string, time?: string): string => {
-    if (!date) return "Unknown date";
-    if (!time) return date;
-    return `${date} at ${time}`;
   };
 
   const statuses = ["success", "failed", "rollback"];
@@ -173,38 +226,86 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
 
         {/* Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-400 dark:text-gray-300" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                 Filters:
               </span>
+              {(selectedEnvironment ||
+                selectedStatus ||
+                startDate ||
+                endDate) && (
+                <button
+                  onClick={clearAllFilters}
+                  className="ml-auto px-3 py-1 text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg transition-colors font-medium"
+                >
+                  Clear all filters
+                </button>
+              )}
             </div>
-            <div className="flex flex-wrap gap-4">
-              <select
-                value={selectedEnvironment}
-                onChange={(e) => setSelectedEnvironment(e.target.value)}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">All Environments</option>
-                {environments.map((env) => (
-                  <option key={env} value={env}>
-                    {env.toUpperCase()}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">All Statuses</option>
-                {statuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                  Environment
+                </label>
+                <select
+                  value={selectedEnvironment}
+                  onChange={(e) => setSelectedEnvironment(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">All Environments</option>
+                  {environments.map((env) => (
+                    <option key={env} value={env}>
+                      {env.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                  Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">All Statuses</option>
+                  {statuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -212,21 +313,82 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
         {/* Deployment History */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Deployment History
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-              Showing {filteredHistory.length} of {history.length} deployments
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Deployment History
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                  Showing {startIndex + 1}-
+                  {Math.min(endIndex, filteredHistory.length)} of{" "}
+                  {filteredHistory.length} deployments
+                  {filteredHistory.length !== history.length &&
+                    ` (filtered from ${history.length} total)`}
+                </p>
+              </div>
+
+              {/* Top Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="p-2 text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Previous page"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  {/* Page numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => goToPage(pageNum)}
+                          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                            currentPage === pageNum
+                              ? "bg-blue-500 text-white"
+                              : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="p-2 text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Next page"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredHistory.length === 0 ? (
+            {paginatedHistory.length === 0 ? (
               <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                 No deployments found matching the selected filters.
               </div>
             ) : (
-              filteredHistory.map((deployment) => {
+              paginatedHistory.map((deployment) => {
                 const envName = deployment.envName?.toLowerCase() || "unknown";
                 const envTextDark =
                   {
@@ -254,7 +416,19 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white font-mono">
+                            <h3
+                              className={`text-lg font-semibold font-mono cursor-pointer transition-colors ${
+                                onDeploymentClick
+                                  ? "text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                                  : "text-gray-900 dark:text-white"
+                              }`}
+                              onClick={() =>
+                                onDeploymentClick?.(
+                                  deployment,
+                                  deployment.envName || "unknown"
+                                )
+                              }
+                            >
                               {deployment.artifactVersion || "Unknown Version"}
                             </h3>
                             <span
@@ -280,7 +454,7 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
                               <span>
                                 {formatDateTime(
                                   deployment.deployedAt,
-                                  deployment.deployedTime || undefined
+                                  timezone
                                 )}
                               </span>
                             </div>
@@ -343,6 +517,73 @@ const ComponentHistory: React.FC<ComponentHistoryProps> = ({
               })
             )}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages >= 1 && (
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  {totalPages === 1
+                    ? "All deployments shown (no pagination needed)"
+                    : `Page ${currentPage} of ${totalPages}`}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-2 text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Previous page"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    {/* Page numbers */}
+                    <div className="flex items-center gap-1">
+                      {Array.from(
+                        { length: Math.min(5, totalPages) },
+                        (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => goToPage(pageNum)}
+                              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                                currentPage === pageNum
+                                  ? "bg-blue-500 text-white"
+                                  : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        }
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Next page"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Summary Stats */}

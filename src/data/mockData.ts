@@ -91,8 +91,8 @@ export async function getComponentHistory(
     history[componentId] = deployments.map((deployment) => ({
       id: deployment.id,
       artifactVersion: deployment.artifactVersion,
-      deployedAt: deployment.deployedAt.split("T")[0], // Extract date part
-      deployedTime: deployment.deployedAt.split("T")[1]?.split(".")[0] || null, // Extract time part
+      deployedAt: deployment.deployedAt, // Keep the full ISO string for timezone handling
+      deployedTime: deployment.deployedAt.split("T")[1]?.split(".")[0] || null, // Keep for backward compatibility
       deployedBy: deployment.deployedBy,
       status: deployment.status,
       duration: deployment.duration,
