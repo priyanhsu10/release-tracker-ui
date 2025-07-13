@@ -6,9 +6,12 @@ import {
   Eim,
 } from "../types";
 
+// Get API base URL from environment variable
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+
 // API-like async functions for real data
 export async function getComponents(eimId?: string): Promise<ComponentData[]> {
-  let url = "/api/tracker-dashboard/latest-deployment";
+  let url = `${API_BASE_URL}/api/tracker-dashboard/latest-deployment`;
   if (eimId) {
     url += `/${encodeURIComponent(eimId)}`;
   }
@@ -62,7 +65,7 @@ export async function getComponents(eimId?: string): Promise<ComponentData[]> {
 export async function getComponentHistory(
   eimId?: string
 ): Promise<Record<string, DeploymentHistory[]>> {
-  let url = "/api/tracker-dashboard/history";
+  let url = `${API_BASE_URL}/api/tracker-dashboard/history`;
   if (eimId) {
     url += `/${encodeURIComponent(eimId)}`;
   }
@@ -115,7 +118,7 @@ export async function getComponentHistory(
 }
 
 export async function getEims(eimId?: string): Promise<Eim[]> {
-  let url = "/api/tracker-dashboard/eims";
+  let url = `${API_BASE_URL}/api/tracker-dashboard/eims`;
   if (eimId) {
     url += `/${encodeURIComponent(eimId)}`;
   }
@@ -145,7 +148,9 @@ export async function searchEims(searchTerm: string): Promise<Eim[]> {
   }
 
   const response = await fetch(
-    `/api/tracker-dashboard/eims/search/${encodeURIComponent(searchTerm)}`,
+    `${API_BASE_URL}/api/tracker-dashboard/eims/search/${encodeURIComponent(
+      searchTerm
+    )}`,
     {
       method: "GET",
       headers: {
@@ -169,12 +174,15 @@ export async function searchEimsAPI(searchTerm: string): Promise<Eim[]> {
 
 // Real API call to get all servers
 export async function getServers() {
-  const response = await fetch("/api/tracker-dashboard/servers", {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/tracker-dashboard/servers`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
 
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);

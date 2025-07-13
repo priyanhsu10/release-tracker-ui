@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  # Production build
+  release-tracker-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+      target: production
+      args:
+        - VITE_API_BASE_URL=${API_BASE_URL}
+        - VITE_API_TIMEOUT=${API_TIMEOUT}
+        - VITE_ENABLE_MOCK_DATA=${ENABLE_MOCK_DATA}
+        - VITE_APP_TITLE=${VITE_APP_TITLE}
+        - VITE_APP_VERSION=${VITE_APP_VERSION}
+    ports:
+      - "8080:80"
+    env_file:
+      - env.production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - release-tracker-network
+
+networks:
+  release-tracker-network:
+    driver: bridge

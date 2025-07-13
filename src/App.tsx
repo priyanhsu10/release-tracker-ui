@@ -4,23 +4,17 @@ import { DeploymentHistory } from "./types";
 import { getComponents, getComponentHistory, getEims } from "./data/mockData";
 import DeploymentModal from "./components/DeploymentModal";
 import ComponentHistory from "./components/ComponentHistory";
-import Tooltip from "./components/Tooltip";
+import ComponentTable from "./components/ComponentTable";
+import SummaryStats from "./components/SummaryStats";
+import Legend from "./components/Legend";
+import Pagination from "./components/Pagination";
 import { useParams, useNavigate } from "react-router-dom";
-import { formatDateTime } from "./utils/formatDateTime";
 import {
   getEnvironmentColor,
   getEnvironmentTextColor,
   isRecentDeployment,
 } from "./utils/helpers";
-import {
-  Moon,
-  Sun,
-  RefreshCw,
-  Search,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Moon, Sun, RefreshCw } from "lucide-react";
 
 // Theme context
 const ThemeContext = React.createContext<{
@@ -395,300 +389,42 @@ function App() {
             </button>
           )}
 
-          {/* Controls */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                <input
-                  type="text"
-                  placeholder="Search components..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                />
-              </div>
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                <select
-                  value={selectedEnvironment}
-                  onChange={(e) => setSelectedEnvironment(e.target.value)}
-                  className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="">All Environments</option>
-                  {environments.map((env: string) => (
-                    <option key={env} value={env}>
-                      {env.toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Table */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                  <tr>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900 dark:text-white sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 min-w-[200px]">
-                      Component
-                    </th>
-                    {environments.map((env: string) => (
-                      <th
-                        key={env}
-                        className={`text-center py-4 px-6 font-semibold text-gray-900 dark:text-white min-w-[120px] bg-inherit`}
-                      >
-                        {env.toUpperCase()}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {paginatedData.map(
-                    (component: ComponentData, index: number) => (
-                      <tr
-                        key={component.id}
-                        className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                          index % 2 === 0
-                            ? "bg-white dark:bg-gray-900"
-                            : "bg-gray-50/50 dark:bg-gray-800/50"
-                        }`}
-                      >
-                        <td className="py-4 px-6 font-medium text-gray-900 dark:text-white sticky left-0 bg-inherit z-10 border-r border-gray-200 dark:border-gray-700">
-                          <button
-                            onClick={() => handleComponentClick(component)}
-                            className="text-left hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                          >
-                            <div>
-                              <div className="font-semibold">
-                                {component.name}
-                              </div>
-                              {component.description && (
-                                <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                  {component.description}
-                                </div>
-                              )}
-                            </div>
-                          </button>
-                        </td>
-                        {environments.map((env: string) => {
-                          const deployment = component.deployments[env];
-                          // Only colored text in dark mode
-                          const envText = getEnvironmentTextColor(env);
-                          const envTextDark =
-                            {
-                              dev: "dark:text-yellow-300",
-                              qa: "dark:text-blue-300",
-                              uat: "dark:text-purple-300",
-                              prod: "dark:text-green-300",
-                            }[env] || "dark:text-gray-200";
-                          return (
-                            <td
-                              key={env}
-                              className={`py-4 px-6 text-center border-r border-gray-100 dark:border-gray-700 bg-inherit dark:bg-gray-800`}
-                            >
-                              {deployment ? (
-                                <Tooltip deployment={deployment}>
-                                  <div className="relative flex flex-col items-center">
-                                    <button
-                                      onClick={() =>
-                                        handleVersionClick(
-                                          deployment,
-                                          env,
-                                          component.name
-                                        )
-                                      }
-                                      className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${envText} ${envTextDark} bg-white/70 dark:bg-gray-700 hover:bg-white/90 dark:hover:bg-gray-600 transition-colors`}
-                                    >
-                                      {deployment.artifactVersion}
-                                    </button>
-                                    <span className="block text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                      {formatDateTime(
-                                        deployment.deployedAt,
-                                        timezone
-                                      )}
-                                    </span>
-                                    {isRecentDeployment(
-                                      deployment.deployedAt
-                                    ) && (
-                                      <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
-                                    )}
-                                  </div>
-                                </Tooltip>
-                              ) : (
-                                <span className="text-gray-400 dark:text-gray-500 text-lg">
-                                  —
-                                </span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Component Table */}
+          <ComponentTable
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            selectedEnvironment={selectedEnvironment}
+            setSelectedEnvironment={setSelectedEnvironment}
+            environments={environments}
+            paginatedData={paginatedData}
+            handleComponentClick={handleComponentClick}
+            handleVersionClick={handleVersionClick}
+            timezone={timezone}
+            isRecentDeployment={isRecentDeployment}
+            getEnvironmentTextColor={getEnvironmentTextColor}
+          />
 
           {/* Pagination Controls */}
-          {totalPages >= 1 && (
-            <div className="mt-4 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-4">
-              <div className="text-sm text-gray-600 dark:text-gray-300">
-                {totalPages === 1
-                  ? `All ${filteredData.length} components shown (no pagination needed)`
-                  : `Showing ${startIndex + 1}-${Math.min(
-                      endIndex,
-                      filteredData.length
-                    )} of ${filteredData.length} components`}
-              </div>
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => goToPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Previous page"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-
-                  {/* Page numbers */}
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => goToPage(pageNum)}
-                          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                            currentPage === pageNum
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                              : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <button
-                    onClick={() => goToPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Next page"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            totalItems={filteredData.length}
+            goToPage={goToPage}
+          />
 
           {/* Summary Stats */}
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {environments.map((env: string) => {
-              const deployedCount = filteredData.filter(
-                (component: ComponentData) => component.deployments[env]
-              ).length;
-              const recentCount = filteredData.filter(
-                (component: ComponentData) =>
-                  component.deployments[env] &&
-                  isRecentDeployment(component.deployments[env]?.deployedAt)
-              ).length;
-              const totalCount = filteredData.length;
-              const percentage =
-                totalCount > 0
-                  ? Math.round((deployedCount / totalCount) * 100)
-                  : 0;
-              const envTextDark =
-                {
-                  dev: "dark:text-yellow-300",
-                  qa: "dark:text-blue-300",
-                  uat: "dark:text-purple-300",
-                  prod: "dark:text-green-300",
-                }[env] || "dark:text-gray-200";
-              return (
-                <div
-                  key={env}
-                  className={`rounded-lg p-4 ${getEnvironmentColor(
-                    env
-                  )} dark:bg-gray-800`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p
-                        className={`text-sm font-medium text-gray-600 ${envTextDark}`}
-                      >
-                        {env.toUpperCase()}
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {deployedCount}/{totalCount}
-                      </p>
-                      {recentCount > 0 && (
-                        <p className="text-xs text-red-600 dark:text-red-400 font-medium">
-                          {recentCount} recent deployment
-                          {recentCount !== 1 ? "s" : ""}
-                        </p>
-                      )}
-                    </div>
-                    <div
-                      className={`text-sm font-medium ${getEnvironmentTextColor(
-                        env
-                      )} ${envTextDark}`}
-                    >
-                      {percentage}%
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <SummaryStats
+            environments={environments}
+            filteredData={filteredData}
+            isRecentDeployment={isRecentDeployment}
+            getEnvironmentColor={getEnvironmentColor}
+            getEnvironmentTextColor={getEnvironmentTextColor}
+          />
 
           {/* Legend */}
-          <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Legend
-            </h3>
-            <div className="flex flex-wrap gap-4 text-xs text-gray-600 dark:text-gray-400">
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <span className="inline-block px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                    v1.0.0
-                  </span>
-                  <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full"></span>
-                </div>
-                <span>Recent deployment (within 24 hours)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400 dark:text-gray-500 text-lg">
-                  —
-                </span>
-                <span>No deployment in this environment</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="inline-block px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs">
-                  v1.0.0
-                </button>
-                <span>
-                  Click version for details, component name for history
-                </span>
-              </div>
-            </div>
-          </div>
+          <Legend />
 
           {/* Deployment Modal */}
           <DeploymentModal
