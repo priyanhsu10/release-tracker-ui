@@ -1,147 +1,26 @@
 import React, { useState, useEffect } from "react";
-import {
-  Search,
-  Filter,
-  ExternalLink,
-  Sun,
-  Moon,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
 import { ComponentData, Theme, Eim } from "./types";
 import { DeploymentHistory } from "./types";
 import { getComponents, getComponentHistory, getEims } from "./data/mockData";
 import DeploymentModal from "./components/DeploymentModal";
 import ComponentHistory from "./components/ComponentHistory";
+import Tooltip from "./components/Tooltip";
 import { useParams, useNavigate } from "react-router-dom";
 import { formatDateTime } from "./utils/formatDateTime";
-
-const getEnvironmentColor = (env: string, darkMode = false): string => {
-  if (darkMode) {
-    switch (env) {
-      case "dev":
-        return "dark:bg-yellow-900/30";
-      case "qa":
-        return "dark:bg-blue-900/30";
-      case "uat":
-        return "dark:bg-purple-900/30";
-      case "fut":
-        return "dark:bg-purple-900/30";
-      case "prod":
-        return "dark:bg-green-900/30";
-      default:
-        return "dark:bg-gray-800/30";
-    }
-  } else {
-    switch (env) {
-      case "dev":
-        return "bg-yellow-50 border-yellow-200";
-      case "qa":
-        return "bg-blue-50 border-blue-200";
-      case "uat":
-        return "bg-purple-50 border-purple-200";
-      case "prod":
-        return "bg-green-50 border-green-200";
-      default:
-        return "bg-gray-50 border-gray-200";
-    }
-  }
-};
-
-const getEnvironmentTextColor = (env: string, darkMode = false): string => {
-  if (darkMode) {
-    switch (env) {
-      case "dev":
-        return "dark:text-yellow-200";
-      case "qa":
-        return "dark:text-blue-200";
-      case "uat":
-        return "dark:text-purple-200";
-      case "prod":
-        return "dark:text-green-200";
-      default:
-        return "dark:text-gray-200";
-    }
-  } else {
-    switch (env) {
-      case "dev":
-        return "text-yellow-700";
-      case "qa":
-        return "text-blue-700";
-      case "uat":
-        return "text-purple-700";
-      case "prod":
-        return "text-green-700";
-      default:
-        return "text-gray-700";
-    }
-  }
-};
-
-const isRecentDeployment = (deployedAt?: string): boolean => {
-  if (!deployedAt) return false;
-  const deployDate = new Date(deployedAt);
-  const now = new Date();
-  const diffInHours = (now.getTime() - deployDate.getTime()) / (1000 * 60 * 60);
-  return diffInHours <= 24;
-};
-
-const Tooltip: React.FC<{
-  deployment: ComponentData["deployments"][string];
-  children: React.ReactNode;
-}> = ({ deployment, children }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  if (!deployment) return <>{children}</>;
-
-  return (
-    <div className="relative inline-block">
-      <div
-        onMouseEnter={() => setIsVisible(true)}
-        onMouseLeave={() => setIsVisible(false)}
-        className="cursor-pointer"
-      >
-        {children}
-      </div>
-      {isVisible && (
-        <div className="absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg whitespace-nowrap">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1">
-              <span className="font-medium">Version:</span>
-              <span>{deployment.artifactVersion}</span>
-            </div>
-            {deployment.jiraTicketId && (
-              <div className="flex items-center gap-1">
-                <span className="font-medium">Ticket:</span>
-                <span>{deployment.jiraTicketId}</span>
-              </div>
-            )}
-            {(deployment.deployedAt || deployment.deployedTime) && (
-              <div className="flex items-center gap-1">
-                <span className="font-medium">Deployed:</span>
-                <span>{formatDateTime(deployment.deployedAt)}</span>
-              </div>
-            )}
-            {deployment.deployedBy && (
-              <div className="flex items-center gap-1">
-                <span className="font-medium">By:</span>
-                <span>{deployment.deployedBy}</span>
-              </div>
-            )}
-            {deployment.branchUrl && (
-              <div className="flex items-center gap-1">
-                <ExternalLink className="h-3 w-3" />
-                <span className="text-blue-300">View Artifact</span>
-              </div>
-            )}
-          </div>
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
-        </div>
-      )}
-    </div>
-  );
-};
+import {
+  getEnvironmentColor,
+  getEnvironmentTextColor,
+  isRecentDeployment,
+} from "./utils/helpers";
+import {
+  Moon,
+  Sun,
+  RefreshCw,
+  Search,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 // Theme context
 const ThemeContext = React.createContext<{
